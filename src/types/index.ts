@@ -1,0 +1,135 @@
+export type MealType = "breakfast" | "lunch" | "dinner" | "snack";
+
+export type ExerciseCategory =
+  | "chest"
+  | "back"
+  | "legs"
+  | "shoulders"
+  | "arms"
+  | "core"
+  | "cardio"
+  | "other";
+
+export type Equipment =
+  | "barbell"
+  | "dumbbell"
+  | "machine"
+  | "bodyweight"
+  | "cable"
+  | "other";
+
+export interface MacroSummary {
+  calories: number;
+  proteinG: number;
+  carbsG: number;
+  fatG: number;
+}
+
+export interface DailySummary extends MacroSummary {
+  targetCalories: number;
+  targetProteinG: number;
+  targetCarbsG: number;
+  targetFatG: number;
+}
+
+export interface HeatmapDay {
+  dateStr: string;
+  workoutCount: number;
+  caloriePercent: number; // 0-1, ratio of logged cals to target
+}
+
+export interface ActiveSet {
+  id?: number;
+  setNumber: number;
+  reps: number | null;
+  weightKg: number | null;
+  isWarmup: boolean;
+  isDropSet: boolean;
+  completed: boolean;
+}
+
+export interface ActiveExercise {
+  exerciseId: number;
+  exerciseName: string;
+  loggedExerciseId?: number;
+  restSeconds: number;
+  sets: ActiveSet[];
+}
+
+export interface ActiveWorkoutState {
+  sessionId: number | null;
+  routineId: number | null;
+  name: string;
+  startedAt: Date;
+  exercises: ActiveExercise[];
+  currentExerciseIndex: number;
+  restTimerActive: boolean;
+  restTimerSeconds: number;
+  restTimerRemaining: number;
+  isFinished: boolean;
+}
+
+export type ActiveWorkoutAction =
+  | { type: "INIT_SESSION"; sessionId: number; routineId: number | null; name: string; exercises: ActiveExercise[] }
+  | { type: "ADD_SET"; exerciseIndex: number }
+  | { type: "UPDATE_SET"; exerciseIndex: number; setIndex: number; field: keyof ActiveSet; value: number | boolean | null }
+  | { type: "COMPLETE_SET"; exerciseIndex: number; setIndex: number; loggedSetId: number }
+  | { type: "REMOVE_SET"; exerciseIndex: number; setIndex: number }
+  | { type: "START_REST_TIMER"; seconds: number }
+  | { type: "TICK_REST_TIMER" }
+  | { type: "STOP_REST_TIMER" }
+  | { type: "SET_EXERCISE_INDEX"; index: number }
+  | { type: "FINISH_SESSION" }
+  | { type: "RESET" };
+
+export interface ExerciseHistoryPoint {
+  date: string;
+  maxWeightKg: number | null;
+  totalVolume: number; // sets × reps × weight
+  maxReps: number | null;
+  sessionName: string;
+}
+
+export interface RoutineWithExercises {
+  id: number;
+  name: string;
+  description: string | null;
+  color: string;
+  sortOrder: number;
+  createdAt: Date;
+  updatedAt: Date;
+  exercises: Array<{
+    id: number;
+    exerciseId: number;
+    exerciseName: string;
+    category: string;
+    sortOrder: number;
+    defaultSets: number;
+    defaultRepsMin: number;
+    defaultRepsMax: number;
+    defaultWeightKg: number | null;
+    restSeconds: number;
+    notes: string | null;
+  }>;
+}
+
+export interface SessionWithDetails {
+  id: number;
+  name: string;
+  startedAt: Date;
+  finishedAt: Date | null;
+  durationSec: number | null;
+  dateStr: string;
+  notes: string | null;
+  exercises: Array<{
+    id: number;
+    exerciseName: string;
+    sets: Array<{
+      setNumber: number;
+      reps: number | null;
+      weightKg: number | null;
+      isWarmup: boolean;
+      isPersonalBest: boolean;
+    }>;
+  }>;
+}

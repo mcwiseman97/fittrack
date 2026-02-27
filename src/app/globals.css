@@ -1,0 +1,126 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 6%;           /* #0f0f0f */
+    --foreground: 240 5% 94%;        /* #f0f0f1 */
+    --card: 240 4% 11%;              /* #1a1a1b */
+    --card-foreground: 240 5% 94%;
+    --popover: 240 4% 11%;
+    --popover-foreground: 240 5% 94%;
+    --primary: 263 70% 76%;          /* #a78bfa purple accent */
+    --primary-foreground: 240 5% 6%;
+    --secondary: 240 4% 14%;         /* #212122 */
+    --secondary-foreground: 240 5% 94%;
+    --muted: 240 4% 14%;
+    --muted-foreground: 240 5% 55%;  /* #8a8a8e */
+    --accent: 240 4% 16%;
+    --accent-foreground: 240 5% 94%;
+    --destructive: 0 72% 71%;        /* #f87171 */
+    --destructive-foreground: 240 5% 6%;
+    --border: 240 4% 18%;            /* #2e2e30 */
+    --input: 240 4% 18%;
+    --ring: 263 70% 76%;
+    --radius: 0.75rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: hsl(var(--border));
+    border-radius: 3px;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--muted-foreground));
+  }
+}
+
+@layer utilities {
+  /* Bento card with subtle glow */
+  .bento-card {
+    @apply bg-card border border-border rounded-xl p-4 transition-all duration-200;
+  }
+
+  .bento-card:hover {
+    @apply border-border/80;
+    box-shadow: 0 0 0 1px hsl(var(--border) / 0.5);
+  }
+
+  /* Neon accent glows */
+  .glow-purple {
+    box-shadow: 0 0 20px rgba(167, 139, 250, 0.2);
+  }
+
+  .glow-green {
+    box-shadow: 0 0 20px rgba(52, 211, 153, 0.2);
+  }
+
+  .glow-blue {
+    box-shadow: 0 0 20px rgba(96, 165, 250, 0.2);
+  }
+
+  /* Skeleton shimmer */
+  .skeleton {
+    @apply relative overflow-hidden bg-muted rounded-md;
+  }
+
+  .skeleton::after {
+    content: "";
+    @apply absolute inset-0;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      hsl(var(--muted-foreground) / 0.1) 50%,
+      transparent 100%
+    );
+    animation: shimmer 1.5s infinite;
+    transform: translateX(-100%);
+  }
+
+  /* Number inputs — remove spinners */
+  input[type="number"]::-webkit-inner-spin-button,
+  input[type="number"]::-webkit-outer-spin-button {
+    -webkit-appearance: none;
+    margin: 0;
+  }
+
+  input[type="number"] {
+    -moz-appearance: textfield;
+  }
+
+  /* Tap highlight on mobile */
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+}
+
+/* Smooth page transitions */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}

@@ -1,0 +1,21 @@
+version: "3.9"
+
+services:
+  fittrack:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    ports:
+      - "3080:3000"
+    volumes:
+      - "${APP_DATA_DIR:-./data}/fittrack:/data"
+    environment:
+      DATABASE_URL: /data/fittrack.db
+      NODE_ENV: production
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/profile"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
