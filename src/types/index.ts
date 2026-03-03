@@ -32,10 +32,12 @@ export interface DailySummary extends MacroSummary {
   targetFatG: number;
 }
 
-export interface HeatmapDay {
-  dateStr: string;
-  workoutCount: number;
-  caloriePercent: number; // 0-1, ratio of logged cals to target
+export interface WeeklyStats {
+  workoutStreak: number;
+  nutritionStreak: number;
+  thisWeekWorkouts: number;
+  thisWeekAvgCalPercent: number; // 0–1
+  weeklyBuckets: Array<{ label: string; workoutDays: number; avgCalPercent: number }>;
 }
 
 export interface ActiveSet {
@@ -54,6 +56,7 @@ export interface ActiveExercise {
   loggedExerciseId?: number;
   restSeconds: number;
   sets: ActiveSet[];
+  previousSets?: Array<{ weightKg: number | null; reps: number | null }>;
 }
 
 export interface ActiveWorkoutState {
@@ -71,6 +74,8 @@ export interface ActiveWorkoutState {
 
 export type ActiveWorkoutAction =
   | { type: "INIT_SESSION"; sessionId: number; routineId: number | null; name: string; exercises: ActiveExercise[] }
+  | { type: "RESTORE_SESSION"; sessionId: number; routineId: number | null; name: string; startedAt: Date; exercises: ActiveExercise[] }
+  | { type: "ADD_EXERCISE"; exercise: ActiveExercise }
   | { type: "ADD_SET"; exerciseIndex: number }
   | { type: "UPDATE_SET"; exerciseIndex: number; setIndex: number; field: keyof ActiveSet; value: number | boolean | null }
   | { type: "COMPLETE_SET"; exerciseIndex: number; setIndex: number; loggedSetId: number }
@@ -88,6 +93,7 @@ export interface ExerciseHistoryPoint {
   totalVolume: number; // sets × reps × weight
   maxReps: number | null;
   sessionName: string;
+  sets: Array<{ weightKg: number | null; reps: number | null }>;
 }
 
 export interface RoutineWithExercises {

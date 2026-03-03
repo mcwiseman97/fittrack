@@ -31,6 +31,10 @@ export function round1(n: number): number {
   return Math.round(n * 10) / 10;
 }
 
+export function round4(n: number): number {
+  return Math.round(n * 10000) / 10000;
+}
+
 export function round0(n: number): number {
   return Math.round(n);
 }
@@ -49,7 +53,7 @@ export function kgToLbs(kg: number): number {
 }
 
 export function lbsToKg(lbs: number): number {
-  return round1(lbs / 2.20462);
+  return round4(lbs / 2.20462);
 }
 
 export function cmToFtIn(cm: number): string {

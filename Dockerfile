@@ -12,6 +12,10 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
+# Pre-create the build-time DB in WAL mode so concurrent Next.js workers
+# don't deadlock trying to set journal_mode simultaneously on a fresh file.
+ENV DATABASE_URL=/tmp/fittrack-build.db
+RUN node -e "const D=require('better-sqlite3');const db=new D('/tmp/fittrack-build.db');db.pragma('journal_mode=WAL');db.close()"
 RUN npm run build
 
 # ─── Stage 3: runner ─────────────────────────────────────────────────────────

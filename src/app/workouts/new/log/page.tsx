@@ -1,16 +1,23 @@
 "use client"
-import { useState, useEffect, useCallback } from "react"
+import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { CheckCircle2, Plus } from "lucide-react"
+import { format } from "date-fns"
 import { toast } from "sonner"
 import { Button } from "@/components/ui/button"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { PageHeader } from "@/components/layout/PageHeader"
 import { ActiveWorkoutPanel } from "@/components/workouts/ActiveWorkoutPanel"
 import { ExerciseSelector } from "@/components/workouts/ExerciseSelector"
 import { useActiveWorkout } from "@/hooks/useActiveWorkout"
+import { ROUTINE_COLORS } from "@/lib/constants"
+import { cn, formatDuration } from "@/lib/utils"
 import type { ActiveExercise, ExerciseHistoryPoint } from "@/types"
 import type { Exercise } from "@/db/schema"
-import { formatDuration } from "@/lib/utils"
+
+const SESSION_KEY = "fittrack_active_adhoc"
 
 type DraftSet = { weightKg: number | null; reps: number | null; isWarmup: boolean; isDropSet: boolean } | null
 
@@ -20,21 +27,19 @@ async function fetchHistory(exerciseName: string): Promise<ExerciseHistoryPoint[
     .catch(() => [] as ExerciseHistoryPoint[])
 }
 
-function attachHistory(exercises: ActiveExercise[], historyResults: ExerciseHistoryPoint[][]): void {
-  exercises.forEach((ex, i) => {
-    const lastWithSets = [...historyResults[i]].reverse().find((h) => h.sets?.length > 0)
-    if (lastWithSets) ex.previousSets = lastWithSets.sets
-  })
-}
-
-export default function ActiveWorkoutPage({ params }: { params: { id: string } }) {
-  const { id } = params
+export default function AdhocWorkoutPage() {
   const router = useRouter()
   const workout = useActiveWorkout()
   const { state } = workout
   const [showExSelector, setShowExSelector] = useState(false)
   const [elapsed, setElapsed] = useState(0)
   const [initialized, setInitialized] = useState(false)
+
+  // Save-as-routine dialog state
+  const [showSaveDialog, setShowSaveDialog] = useState(false)
+  const [routineName, setRoutineName] = useState("")
+  const [routineColor, setRoutineColor] = useState(ROUTINE_COLORS[0])
+  const [savingRoutine, setSavingRoutine] = useState(false)
 
   // Elapsed timer
   useEffect(() => {
@@ -45,43 +50,28 @@ export default function ActiveWorkoutPage({ params }: { params: { id: string } }
     return () => clearInterval(interval)
   }, [state.sessionId, state.startedAt])
 
-  // Initialize or resume session
+  // Initialize or resume ad-hoc session
   useEffect(() => {
     if (initialized) return
     setInitialized(true)
 
-    const sessionKey = `fittrack_active_${id}`
-
     const doInit = async () => {
-      let routine: { id: number; name: string; exercises: Array<{ exerciseId: number; exerciseName?: string; defaultSets: number; defaultRepsMin: number; defaultRepsMax: number; defaultWeightKg: number | null; restSeconds: number }> }
-      try {
-        const r = await fetch(`/api/routines/${id}`)
-        routine = await r.json()
-      } catch {
-        toast.error("Failed to load routine")
-        return
-      }
-
-      // Try to resume an existing session
-      const storedSessionId = (() => { try { return localStorage.getItem(sessionKey) } catch { return null } })()
+      // Try to resume an existing ad-hoc session
+      const storedSessionId = (() => { try { return localStorage.getItem(SESSION_KEY) } catch { return null } })()
       if (storedSessionId) {
         try {
           const sessionRes = await fetch(`/api/workouts/${storedSessionId}`)
           if (sessionRes.ok) {
             const session = await sessionRes.json()
             if (!session.finishedAt) {
-              // Load draft
               let draft: DraftSet[][] | null = null
               try {
                 const raw = localStorage.getItem(`fittrack_draft_${session.id}`)
                 if (raw) draft = JSON.parse(raw)
               } catch {}
 
-              // Reconstruct ActiveExercise[] from DB
               const activeExercises: ActiveExercise[] = (session.exercises ?? []).map(
                 (le: { id: number; exerciseId: number; exerciseName: string; sets: Array<{ id: number; setNumber: number; reps: number | null; weightKg: number | null; isWarmup: boolean; isDropSet: boolean }> }, idx: number) => {
-                  const routineEx = routine.exercises.find((re) => re.exerciseId === le.exerciseId) ?? routine.exercises[idx]
-
                   const completedSets = le.sets.map((s) => ({
                     id: s.id,
                     setNumber: s.setNumber,
@@ -107,32 +97,28 @@ export default function ActiveWorkoutPage({ params }: { params: { id: string } }
                   const allSets =
                     completedSets.length > 0 || uncompletedSets.length > 0
                       ? [...completedSets, ...uncompletedSets]
-                      : Array.from({ length: routineEx?.defaultSets ?? 3 }, (_, i) => ({
-                          setNumber: i + 1,
-                          reps: routineEx?.defaultRepsMin ?? null,
-                          weightKg: routineEx?.defaultWeightKg ?? null,
-                          isWarmup: false,
-                          isDropSet: false,
-                          completed: false as const,
-                        }))
+                      : [{ setNumber: 1, reps: null, weightKg: null, isWarmup: false, isDropSet: false, completed: false as const }]
 
                   return {
                     exerciseId: le.exerciseId,
                     exerciseName: le.exerciseName,
                     loggedExerciseId: le.id,
-                    restSeconds: routineEx?.restSeconds ?? 90,
+                    restSeconds: 90,
                     sets: allSets,
                   }
                 }
               )
 
               const historyResults = await Promise.all(activeExercises.map((ex) => fetchHistory(ex.exerciseName)))
-              attachHistory(activeExercises, historyResults)
+              activeExercises.forEach((ex, i) => {
+                const lastWithSets = [...historyResults[i]].reverse().find((h) => h.sets?.length > 0)
+                if (lastWithSets) ex.previousSets = lastWithSets.sets
+              })
 
               workout.dispatch({
                 type: "RESTORE_SESSION",
                 sessionId: session.id,
-                routineId: routine.id,
+                routineId: null,
                 name: session.name,
                 startedAt: new Date(session.startedAt),
                 exercises: activeExercises,
@@ -142,56 +128,27 @@ export default function ActiveWorkoutPage({ params }: { params: { id: string } }
             }
           }
         } catch {}
-        // Resume failed — clear stale key and fall through to new session
-        try { localStorage.removeItem(sessionKey) } catch {}
+        try { localStorage.removeItem(SESSION_KEY) } catch {}
       }
 
-      // Create new session
+      // Create new ad-hoc session
       try {
+        const name = `Quick Workout — ${format(new Date(), "MMM d")}`
         const sessionRes = await fetch("/api/workouts", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ routineId: routine.id, name: routine.name }),
+          body: JSON.stringify({ name }),
         })
         const session = await sessionRes.json()
-
-        // Store session ID for resume
-        try { localStorage.setItem(sessionKey, String(session.id)) } catch {}
-
-        const exRes = await fetch(`/api/workouts/${session.id}/exercises`)
-        const loggedExs = await exRes.json()
-
-        const activeExercises: ActiveExercise[] = loggedExs.map(
-          (le: { id: number; exerciseId: number; exerciseName: string }, idx: number) => {
-            const routineEx = routine.exercises[idx]
-            return {
-              exerciseId: le.exerciseId,
-              exerciseName: le.exerciseName,
-              loggedExerciseId: le.id,
-              restSeconds: routineEx?.restSeconds ?? 90,
-              sets: Array.from({ length: routineEx?.defaultSets ?? 3 }, (_, i) => ({
-                setNumber: i + 1,
-                reps: routineEx?.defaultRepsMin ?? null,
-                weightKg: routineEx?.defaultWeightKg ?? null,
-                isWarmup: false,
-                isDropSet: false,
-                completed: false,
-              })),
-            }
-          }
-        )
-
-        const historyResults = await Promise.all(activeExercises.map((ex) => fetchHistory(ex.exerciseName)))
-        attachHistory(activeExercises, historyResults)
-
-        workout.initSession(session.id, routine.id, routine.name, activeExercises)
+        try { localStorage.setItem(SESSION_KEY, String(session.id)) } catch {}
+        workout.initSession(session.id, null, name, [])
       } catch {
         toast.error("Failed to start workout")
       }
     }
 
     doInit()
-  }, [id, initialized]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [initialized]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const addExercise = async (ex: Exercise) => {
     if (!state.sessionId) return
@@ -202,12 +159,15 @@ export default function ActiveWorkoutPage({ params }: { params: { id: string } }
     })
     if (res.ok) {
       const logged = await res.json()
+      const history = await fetchHistory(ex.name)
+      const lastWithSets = [...history].reverse().find((h) => h.sets?.length > 0)
       const newEx: ActiveExercise = {
         exerciseId: ex.id,
         exerciseName: ex.name,
         loggedExerciseId: logged.id,
         restSeconds: 90,
         sets: [{ setNumber: 1, reps: null, weightKg: null, isWarmup: false, isDropSet: false, completed: false }],
+        previousSets: lastWithSets?.sets,
       }
       workout.addExercise(newEx)
     }
@@ -215,7 +175,55 @@ export default function ActiveWorkoutPage({ params }: { params: { id: string } }
 
   const handleFinish = async () => {
     await workout.finishSession()
-    toast.success("Workout completed! 💪", { duration: 3000 })
+    // Default routine name = workout name
+    setRoutineName(state.name)
+    setShowSaveDialog(true)
+  }
+
+  const handleSaveRoutine = async () => {
+    if (!routineName.trim()) { toast.error("Routine name required"); return }
+    setSavingRoutine(true)
+    try {
+      const routineRes = await fetch("/api/routines", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: routineName.trim(), color: routineColor }),
+      })
+      if (!routineRes.ok) throw new Error("Failed to create routine")
+      const routine = await routineRes.json()
+
+      for (let i = 0; i < state.exercises.length; i++) {
+        const ex = state.exercises[i]
+        const completedSets = ex.sets.filter((s) => s.completed)
+        const weights = completedSets.map((s) => s.weightKg).filter((w): w is number => w !== null)
+        const reps = completedSets.map((s) => s.reps).filter((r): r is number => r !== null)
+        await fetch(`/api/routines/${routine.id}/exercises`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            exerciseId: ex.exerciseId,
+            sortOrder: i,
+            defaultSets: Math.max(completedSets.length, 3),
+            defaultRepsMin: reps.length > 0 ? Math.min(...reps) : 8,
+            defaultRepsMax: reps.length > 0 ? Math.max(...reps) : 12,
+            defaultWeightKg: weights.length > 0 ? Math.max(...weights) : null,
+            restSeconds: ex.restSeconds,
+          }),
+        })
+      }
+
+      toast.success("Routine saved!")
+    } catch {
+      toast.error("Failed to save routine")
+    } finally {
+      setSavingRoutine(false)
+      setShowSaveDialog(false)
+      router.push("/workouts")
+    }
+  }
+
+  const handleSkipSave = () => {
+    setShowSaveDialog(false)
     router.push("/workouts")
   }
 
@@ -224,7 +232,7 @@ export default function ActiveWorkoutPage({ params }: { params: { id: string } }
       <div className="flex items-center justify-center min-h-[50vh]">
         <div className="text-center space-y-2">
           <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
-          <p className="text-sm text-muted-foreground">Loading workout...</p>
+          <p className="text-sm text-muted-foreground">Starting workout...</p>
         </div>
       </div>
     )
@@ -246,7 +254,12 @@ export default function ActiveWorkoutPage({ params }: { params: { id: string } }
               <Plus className="w-3.5 h-3.5" />
               Exercise
             </Button>
-            <Button size="sm" onClick={handleFinish} className="gap-1.5 bg-neon-green/20 text-neon-green border border-neon-green/30 hover:bg-neon-green/30">
+            <Button
+              size="sm"
+              onClick={handleFinish}
+              disabled={state.isFinished}
+              className="gap-1.5 bg-neon-green/20 text-neon-green border border-neon-green/30 hover:bg-neon-green/30"
+            >
               <CheckCircle2 className="w-4 h-4" />
               Finish
             </Button>
@@ -254,13 +267,59 @@ export default function ActiveWorkoutPage({ params }: { params: { id: string } }
         }
       />
 
-      <ActiveWorkoutPanel workout={workout} />
+      {state.exercises.length === 0 && (
+        <div className="bento-card text-center py-12 space-y-3">
+          <p className="text-muted-foreground text-sm">No exercises yet</p>
+          <Button variant="outline" size="sm" onClick={() => setShowExSelector(true)} className="gap-1.5">
+            <Plus className="w-3.5 h-3.5" />
+            Add Exercise
+          </Button>
+        </div>
+      )}
+
+      {state.exercises.length > 0 && <ActiveWorkoutPanel workout={workout} />}
 
       <ExerciseSelector
         open={showExSelector}
         onClose={() => setShowExSelector(false)}
         onSelect={(ex) => { addExercise(ex); setShowExSelector(false) }}
       />
+
+      <Dialog open={showSaveDialog} onOpenChange={(open) => { if (!open) handleSkipSave() }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Save as Routine?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label>Routine Name</Label>
+              <Input value={routineName} onChange={(e) => setRoutineName(e.target.value)} placeholder="My Workout" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Color</Label>
+              <div className="flex gap-2">
+                {ROUTINE_COLORS.map((c) => (
+                  <button
+                    key={c}
+                    className={cn(
+                      "w-7 h-7 rounded-full transition-transform",
+                      routineColor === c && "ring-2 ring-white ring-offset-2 ring-offset-background scale-110"
+                    )}
+                    style={{ background: c }}
+                    onClick={() => setRoutineColor(c)}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="ghost" onClick={handleSkipSave}>Skip</Button>
+            <Button onClick={handleSaveRoutine} disabled={savingRoutine}>
+              {savingRoutine ? "Saving..." : "Save Routine"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

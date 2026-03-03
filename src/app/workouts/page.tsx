@@ -1,7 +1,7 @@
 "use client"
 import { useState, useEffect } from "react"
 import Link from "next/link"
-import { Plus } from "lucide-react"
+import { Plus, Zap } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { PageHeader } from "@/components/layout/PageHeader"
 import { RoutineCard } from "@/components/workouts/RoutineCard"
@@ -18,11 +18,11 @@ export default function WorkoutsPage() {
 
   useEffect(() => {
     Promise.all([
-      fetch("/api/routines").then((r) => r.json()),
-      fetch("/api/workouts?limit=20").then((r) => r.json()),
+      fetch("/api/routines").then((r) => r.json()).catch(() => []),
+      fetch("/api/workouts?limit=20").then((r) => r.json()).catch(() => []),
     ]).then(([r, s]) => {
-      setRoutines(r)
-      setSessions(s)
+      setRoutines(Array.isArray(r) ? r : [])
+      setSessions(Array.isArray(s) ? s : [])
       setLoading(false)
     })
   }, [])
@@ -36,12 +36,20 @@ export default function WorkoutsPage() {
       <PageHeader
         title="Workouts"
         action={
-          <Link href="/workouts/routines/new">
-            <Button size="sm" className="gap-2">
-              <Plus className="w-4 h-4" />
-              New Routine
-            </Button>
-          </Link>
+          <div className="flex gap-2">
+            <Link href="/workouts/new/log">
+              <Button variant="outline" size="sm" className="gap-2">
+                <Zap className="w-4 h-4" />
+                Quick Workout
+              </Button>
+            </Link>
+            <Link href="/workouts/routines/new">
+              <Button size="sm" className="gap-2">
+                <Plus className="w-4 h-4" />
+                New Routine
+              </Button>
+            </Link>
+          </div>
         }
       />
 

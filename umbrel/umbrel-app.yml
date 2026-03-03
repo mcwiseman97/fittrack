@@ -1,0 +1,33 @@
+manifestVersion: 1
+id: mcwiseman97-umbrel-app-store-fittrack
+category: fitness
+name: FitTrack
+version: "1.0.6"
+tagline: Workout & nutrition tracker for your home server
+description: >-
+  FitTrack is a sleek, self-hosted workout and nutrition tracking app.
+  Log workouts with sets/reps/weight, track macros and calories for every meal,
+  build custom routines, and review your progress over time — all without sending
+  data to any third party.
+
+  Features:
+  • Workout logging with rest timer, personal-best detection, and progress charts
+  • Nutrition diary with custom foods, macro targets, and daily summaries
+  • Consistency heatmap and dashboard overview
+  • Full JSON + CSV data export / import
+  • Dark-mode-first UI optimised for phone and desktop
+
+icon: https://raw.githubusercontent.com/mcwiseman97/mcwiseman97-umbrel-app-store/main/mcwiseman97-umbrel-app-store-fittrack/icon.svg
+developer: mcwiseman97
+website: https://github.com/mcwiseman97/mcwiseman97-umbrel-app-store
+dependencies: []
+repo: https://github.com/mcwiseman97/mcwiseman97-umbrel-app-store
+support: https://github.com/mcwiseman97/mcwiseman97-umbrel-app-store/issues
+port: 3080
+gallery:
+  - 1.jpg
+  - 2.jpg
+  - 3.jpg
+path: ""
+defaultUsername: ""
+defaultPassword: ""

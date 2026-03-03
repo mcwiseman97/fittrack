@@ -42,6 +42,20 @@ function reducer(state: ActiveWorkoutState, action: ActiveWorkoutAction): Active
         currentExerciseIndex: 0,
       }
 
+    case "RESTORE_SESSION":
+      return {
+        ...initialState,
+        sessionId: action.sessionId,
+        routineId: action.routineId,
+        name: action.name,
+        startedAt: action.startedAt,
+        exercises: action.exercises,
+        currentExerciseIndex: 0,
+      }
+
+    case "ADD_EXERCISE":
+      return { ...state, exercises: [...state.exercises, action.exercise] }
+
     case "ADD_SET": {
       const exs = [...state.exercises]
       const ex = { ...exs[action.exerciseIndex] }
@@ -118,9 +132,26 @@ function reducer(state: ActiveWorkoutState, action: ActiveWorkoutAction): Active
   }
 }
 
+type DraftSet = { weightKg: number | null; reps: number | null; isWarmup: boolean; isDropSet: boolean } | null
+
 export function useActiveWorkout() {
   const [state, dispatch] = useReducer(reducer, initialState)
   const autoSaveRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Persist draft set data to localStorage whenever exercises change
+  useEffect(() => {
+    if (!state.sessionId || state.isFinished) return
+    const draft: DraftSet[][] = state.exercises.map((ex) =>
+      ex.sets.map((set) =>
+        set.completed
+          ? null
+          : { weightKg: set.weightKg, reps: set.reps, isWarmup: set.isWarmup, isDropSet: set.isDropSet }
+      )
+    )
+    try {
+      localStorage.setItem(`fittrack_draft_${state.sessionId}`, JSON.stringify(draft))
+    } catch {}
+  }, [state.exercises, state.sessionId, state.isFinished])
 
   const initSession = useCallback(
     (sessionId: number, routineId: number | null, name: string, exercises: ActiveExercise[]) => {
@@ -128,6 +159,10 @@ export function useActiveWorkout() {
     },
     []
   )
+
+  const addExercise = useCallback((exercise: ActiveExercise) => {
+    dispatch({ type: "ADD_EXERCISE", exercise })
+  }, [])
 
   const addSet = useCallback((exerciseIndex: number) => {
     dispatch({ type: "ADD_SET", exerciseIndex })
@@ -177,6 +212,31 @@ export function useActiveWorkout() {
 
   const finishSession = useCallback(async () => {
     if (!state.sessionId) return
+
+    // Auto-save any uncompleted sets that have at least one value filled in
+    for (const ex of state.exercises) {
+      if (!ex.loggedExerciseId) continue
+      for (const set of ex.sets) {
+        if (!set.completed && (set.weightKg !== null || set.reps !== null)) {
+          await fetch(
+            `/api/workouts/${state.sessionId}/exercises/${ex.loggedExerciseId}/sets`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                setNumber: set.setNumber,
+                reps: set.reps,
+                weightKg: set.weightKg,
+                isWarmup: set.isWarmup,
+                isDropSet: set.isDropSet,
+                completedAt: new Date().toISOString(),
+              }),
+            }
+          )
+        }
+      }
+    }
+
     const durationSec = Math.floor((Date.now() - state.startedAt.getTime()) / 1000)
     await fetch(`/api/workouts/${state.sessionId}`, {
       method: "PATCH",
@@ -186,8 +246,18 @@ export function useActiveWorkout() {
         durationSec,
       }),
     })
+
+    // Clear localStorage session + draft keys
+    const sid = state.sessionId
+    const rid = state.routineId
+    try {
+      localStorage.removeItem(`fittrack_draft_${sid}`)
+      if (rid != null) localStorage.removeItem(`fittrack_active_${rid}`)
+      else localStorage.removeItem("fittrack_active_adhoc")
+    } catch {}
+
     dispatch({ type: "FINISH_SESSION" })
-  }, [state.sessionId, state.startedAt])
+  }, [state.sessionId, state.routineId, state.startedAt, state.exercises])
 
   const reset = useCallback(() => dispatch({ type: "RESET" }), [])
 
@@ -195,6 +265,7 @@ export function useActiveWorkout() {
     state,
     dispatch,
     initSession,
+    addExercise,
     addSet,
     updateSet,
     completeSet,
