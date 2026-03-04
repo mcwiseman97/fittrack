@@ -2,6 +2,7 @@ package com.fittrack.android
 
 import android.Manifest
 import android.app.AlertDialog
+import android.app.DownloadManager
 import android.content.Intent
 import android.content.SharedPreferences
 import android.content.pm.PackageManager
@@ -15,6 +16,7 @@ import android.view.MenuItem
 import android.webkit.*
 import android.widget.EditText
 import android.widget.FrameLayout
+import android.widget.Toast
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
@@ -103,6 +105,23 @@ class MainActivity : AppCompatActivity() {
                     showErrorPage(error.description.toString())
                 }
             }
+        }
+
+        webView.setDownloadListener { url, userAgent, contentDisposition, mimetype, _ ->
+            val fileName = URLUtil.guessFileName(url, contentDisposition, mimetype)
+            val cookies = CookieManager.getInstance().getCookie(url)
+            val request = DownloadManager.Request(Uri.parse(url)).apply {
+                setMimeType(mimetype)
+                if (cookies != null) addRequestHeader("Cookie", cookies)
+                addRequestHeader("User-Agent", userAgent)
+                setTitle(fileName)
+                setDescription("Downloading $fileName")
+                setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+                setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
+            }
+            val dm = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
+            dm.enqueue(request)
+            Toast.makeText(this, "Downloading $fileName…", Toast.LENGTH_SHORT).show()
         }
 
         webView.webChromeClient = object : WebChromeClient() {
