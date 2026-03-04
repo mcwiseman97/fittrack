@@ -83,20 +83,8 @@ export default function WorkoutsPage() {
     }
   }
 
-  async function handleExport() {
-    try {
-      const res = await fetch("/api/routines/export")
-      const data = await res.json()
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement("a")
-      a.href = url
-      a.download = `fittrack-routines-${new Date().toISOString().slice(0, 10)}.json`
-      a.click()
-      URL.revokeObjectURL(url)
-    } catch {
-      toast.error("Export failed")
-    }
+  function handleExport() {
+    window.location.href = "/api/routines/export"
   }
 
   async function handleImportFile(e: React.ChangeEvent<HTMLInputElement>) {

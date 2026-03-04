@@ -8,19 +8,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 export function ExportImportPanel() {
   const [importing, setImporting] = useState(false)
 
-  const handleExport = async (format: "json" | "workouts-csv" | "nutrition-csv") => {
-    const res = await fetch(`/api/export?format=${format}`)
-    if (!res.ok) { toast.error("Export failed"); return }
-
-    const blob = await res.blob()
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement("a")
-    a.href = url
-    const ext = format.includes("csv") ? "csv" : "json"
-    a.download = `fittrack-${format}-${new Date().toISOString().slice(0, 10)}.${ext}`
-    a.click()
-    URL.revokeObjectURL(url)
-    toast.success("Export downloaded")
+  const handleExport = (format: "json" | "workouts-csv" | "nutrition-csv") => {
+    window.location.href = `/api/export?format=${format}`
   }
 
   const handleImport = async (e: React.ChangeEvent<HTMLInputElement>) => {

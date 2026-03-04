@@ -49,5 +49,10 @@ export async function GET(req: NextRequest) {
     routines: result,
   }
 
-  return NextResponse.json(payload)
+  return new NextResponse(JSON.stringify(payload, null, 2), {
+    headers: {
+      "Content-Type": "application/json",
+      "Content-Disposition": `attachment; filename="fittrack-routines.json"`,
+    },
+  })
 }
