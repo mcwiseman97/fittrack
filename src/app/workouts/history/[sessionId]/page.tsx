@@ -1,15 +1,17 @@
 "use client"
 import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
-import { ArrowLeft, Clock, Calendar, Trash2, CheckCircle2, Pencil } from "lucide-react"
+import { ArrowLeft, Clock, Calendar, Trash2, CheckCircle2, Pencil, BookmarkPlus } from "lucide-react"
 import { toast } from "sonner"
 import { format } from "date-fns"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Skeleton } from "@/components/ui/skeleton"
-import { formatDateStr, formatDuration, round1, kgToLbs } from "@/lib/utils"
+import { formatDateStr, formatDuration, round1, kgToLbs, cn } from "@/lib/utils"
+import { ROUTINE_COLORS } from "@/lib/constants"
 import type { SessionWithDetails } from "@/types"
 
 // Format a Date (or ISO string) as a datetime-local input value
@@ -38,6 +40,12 @@ export default function SessionDetailPage({ params }: { params: { sessionId: str
   // Edit-duration state (for already-completed sessions)
   const [isEditingDuration, setIsEditingDuration] = useState(false)
   const [editDurationMins, setEditDurationMins] = useState("")
+
+  // Save-as-routine dialog state
+  const [showSaveDialog, setShowSaveDialog] = useState(false)
+  const [routineName, setRoutineName] = useState("")
+  const [routineColor, setRoutineColor] = useState(ROUTINE_COLORS[0])
+  const [savingRoutine, setSavingRoutine] = useState(false)
 
   useEffect(() => {
     fetch(`/api/workouts/${sessionId}`)
@@ -118,6 +126,52 @@ export default function SessionDetailPage({ params }: { params: { sessionId: str
     }
   }
 
+  function openSaveAsRoutine() {
+    setRoutineName(session?.name ?? "")
+    setShowSaveDialog(true)
+  }
+
+  async function handleSaveAsRoutine() {
+    if (!routineName.trim() || !session) { toast.error("Routine name required"); return }
+    setSavingRoutine(true)
+    try {
+      const routineRes = await fetch("/api/routines", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: routineName.trim(), color: routineColor }),
+      })
+      if (!routineRes.ok) throw new Error()
+      const routine = await routineRes.json()
+
+      for (let i = 0; i < session.exercises.length; i++) {
+        const ex = session.exercises[i] as any
+        const workingSets = (ex.sets ?? []).filter((s: any) => !s.isWarmup)
+        const weights = workingSets.map((s: any) => s.weightKg).filter((w: any): w is number => w !== null)
+        const reps = workingSets.map((s: any) => s.reps).filter((r: any): r is number => r !== null)
+        await fetch(`/api/routines/${routine.id}/exercises`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            exerciseId: ex.exerciseId,
+            sortOrder: i,
+            defaultSets: Math.max(workingSets.length, 3),
+            defaultRepsMin: reps.length > 0 ? Math.min(...reps) : 8,
+            defaultRepsMax: reps.length > 0 ? Math.max(...reps) : 12,
+            defaultWeightKg: weights.length > 0 ? Math.max(...weights) : null,
+            restSeconds: 90,
+          }),
+        })
+      }
+      toast.success("Routine saved!")
+      setShowSaveDialog(false)
+      router.push("/workouts")
+    } catch {
+      toast.error("Failed to save routine")
+    } finally {
+      setSavingRoutine(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="space-y-4">
@@ -180,6 +234,15 @@ export default function SessionDetailPage({ params }: { params: { sessionId: str
             )}
           </div>
         </div>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          className="text-muted-foreground hover:text-primary"
+          onClick={openSaveAsRoutine}
+          title="Save as routine"
+        >
+          <BookmarkPlus className="w-4 h-4" />
+        </Button>
         <Button
           variant="ghost"
           size="icon-sm"
@@ -334,6 +397,43 @@ export default function SessionDetailPage({ params }: { params: { sessionId: str
           </Card>
         )
       })()}
+
+      {/* Save as Routine dialog */}
+      <Dialog open={showSaveDialog} onOpenChange={setShowSaveDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Save as Routine</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label>Routine Name</Label>
+              <Input value={routineName} onChange={(e) => setRoutineName(e.target.value)} placeholder="My Routine" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Color</Label>
+              <div className="flex gap-2">
+                {ROUTINE_COLORS.map((c) => (
+                  <button
+                    key={c}
+                    className={cn(
+                      "w-7 h-7 rounded-full transition-transform",
+                      routineColor === c && "ring-2 ring-white ring-offset-2 ring-offset-background scale-110"
+                    )}
+                    style={{ background: c }}
+                    onClick={() => setRoutineColor(c)}
+                  />
+                ))}
+              </div>
+            </div>
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="ghost" onClick={() => setShowSaveDialog(false)}>Cancel</Button>
+            <Button onClick={handleSaveAsRoutine} disabled={savingRoutine}>
+              {savingRoutine ? "Saving..." : "Save Routine"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Exercise list */}
       <div className="space-y-3">
