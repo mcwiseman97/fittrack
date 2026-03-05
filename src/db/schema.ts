@@ -25,6 +25,8 @@ export const profile = sqliteTable("profile", {
   targetProteinG: real("target_protein_g").notNull().default(150),
   targetCarbsG: real("target_carbs_g").notNull().default(200),
   targetFatG: real("target_fat_g").notNull().default(65),
+  goalLbsPerWeek: real("goal_lbs_per_week"),
+  dietType: text("diet_type"),
   updatedAt: integer("updated_at", { mode: "timestamp" })
     .notNull()
     .default(sql`(unixepoch())`),

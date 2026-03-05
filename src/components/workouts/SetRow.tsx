@@ -143,11 +143,14 @@ export function SetRow({ set, setIndex, onUpdate, onComplete, onRemove, previous
     const parsed = parseFloat(speedMphStr)
     if (!isNaN(parsed) && parsed > 0) {
       onUpdate("speedMph" as keyof ActiveSet, parsed)
-      const durSec = (set as any).durationSec as number | null
-      if (durSec && durSec > 0) {
-        const distMi = parsed * (durSec / 3600)
-        onUpdate("distanceM" as keyof ActiveSet, distMi * 1609.344)
-        setDistanceMiStr(distMi.toFixed(2))
+      // Auto-calculate distance from speed+duration for treadmill only
+      if (isTreadmill) {
+        const durSec = (set as any).durationSec as number | null
+        if (durSec && durSec > 0) {
+          const distMi = parsed * (durSec / 3600)
+          onUpdate("distanceM" as keyof ActiveSet, distMi * 1609.344)
+          setDistanceMiStr(distMi.toFixed(2))
+        }
       }
     } else if (speedMphStr === "") {
       onUpdate("speedMph" as keyof ActiveSet, null)
@@ -183,7 +186,7 @@ export function SetRow({ set, setIndex, onUpdate, onComplete, onRemove, previous
   const showPR = isPersonalBest || (set as any).isPersonalBest
 
   // Cardio exercises with extra fields get a second sub-row
-  const hasSecondaryRow = isTreadmill || isBike
+  const hasSecondaryRow = isTreadmill || isBike || isStairClimber
   const noDistance = isStairClimber || isJumpRope || isRepsCardio || isTreadmill
 
   return (
@@ -222,28 +225,43 @@ export function SetRow({ set, setIndex, onUpdate, onComplete, onRemove, previous
         {isCardio ? (
           <>
             {isStairClimber ? (
-              /* Stair Climber: duration + steps */
-              <div className="flex gap-2">
-                <Input
-                  type="text"
-                  value={durationStr}
-                  onChange={(e) => setDurationStr(e.target.value)}
-                  onBlur={handleDurationBlur}
-                  placeholder="MM:SS"
-                  className="h-10 text-center text-sm flex-1 min-w-0"
-                  disabled={set.completed}
-                />
-                <Input
-                  type="text"
-                  inputMode="decimal"
-                  value={stepsStr}
-                  onChange={(e) => setStepsStr(e.target.value)}
-                  onBlur={handleStepsBlur}
-                  placeholder="steps"
-                  className="h-10 text-center text-sm flex-1 min-w-0"
-                  disabled={set.completed}
-                />
-              </div>
+              /* Stair Climber: duration + steps, then speed below */
+              <>
+                <div className="flex gap-2">
+                  <Input
+                    type="text"
+                    value={durationStr}
+                    onChange={(e) => setDurationStr(e.target.value)}
+                    onBlur={handleDurationBlur}
+                    placeholder="MM:SS"
+                    className="h-10 text-center text-sm flex-1 min-w-0"
+                    disabled={set.completed}
+                  />
+                  <Input
+                    type="text"
+                    inputMode="decimal"
+                    value={stepsStr}
+                    onChange={(e) => setStepsStr(e.target.value)}
+                    onBlur={handleStepsBlur}
+                    placeholder="steps"
+                    className="h-10 text-center text-sm flex-1 min-w-0"
+                    disabled={set.completed}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Input
+                    type="text"
+                    inputMode="decimal"
+                    value={speedMphStr}
+                    onChange={(e) => setSpeedMphStr(e.target.value)}
+                    onBlur={handleSpeedBlur}
+                    placeholder="mph"
+                    className="h-10 text-center text-sm flex-1 min-w-0"
+                    disabled={set.completed}
+                  />
+                  <div className="flex-1" />
+                </div>
+              </>
             ) : isJumpRope ? (
               /* Jump Rope: duration + reps (jumps) */
               <div className="flex gap-2">

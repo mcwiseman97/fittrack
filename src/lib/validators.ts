@@ -16,6 +16,8 @@ export const UpdateProfileSchema = z.object({
   targetProteinG: z.number().positive().max(1000).optional(),
   targetCarbsG: z.number().positive().max(2000).optional(),
   targetFatG: z.number().positive().max(1000).optional(),
+  goalLbsPerWeek: z.number().min(-3).max(3).optional().nullable(),
+  dietType: z.string().max(50).optional().nullable(),
 });
 
 // ─── Exercises ─────────────────────────────

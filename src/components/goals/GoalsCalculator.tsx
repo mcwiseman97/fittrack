@@ -61,8 +61,8 @@ export function GoalsCalculator({ profile, latestWeightKg }: Props) {
   const [heightIn, setHeightIn] = useState(initHeight?.inches?.toString() ?? "")
   const [sex, setSex] = useState<string>(profile.biologicalSex ?? "")
   const [activityLevel, setActivityLevel] = useState<string>(profile.activityLevel ?? "")
-  const [lbsPerWeek, setLbsPerWeek] = useState<number>(0)
-  const [dietType, setDietType] = useState("balanced")
+  const [lbsPerWeek, setLbsPerWeek] = useState<number>(profile.goalLbsPerWeek ?? 0)
+  const [dietType, setDietType] = useState((profile as any).dietType ?? "balanced")
   const [saving, setSaving] = useState(false)
   const [applyingTargets, setApplyingTargets] = useState(false)
 
@@ -97,6 +97,25 @@ export function GoalsCalculator({ profile, latestWeightKg }: Props) {
   const proteinG = targetCalories ? Math.round(targetCalories * diet.protein / 4) : null
   const carbsG = targetCalories ? Math.round(targetCalories * diet.carbs / 4) : null
   const fatG = targetCalories ? Math.round(targetCalories * diet.fat / 9) : null
+
+  async function saveGoalPref(patch: Record<string, unknown>) {
+    await fetch("/api/profile", {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(patch),
+    })
+  }
+
+  function handleLbsPerWeekChange(v: string) {
+    const val = parseFloat(v)
+    setLbsPerWeek(val)
+    saveGoalPref({ goalLbsPerWeek: val })
+  }
+
+  function handleDietTypeChange(id: string) {
+    setDietType(id)
+    saveGoalPref({ dietType: id })
+  }
 
   async function saveStats() {
     setSaving(true)
@@ -259,7 +278,7 @@ export function GoalsCalculator({ profile, latestWeightKg }: Props) {
             <Label>Rate of change</Label>
             <Select
               value={lbsPerWeek.toString()}
-              onValueChange={v => setLbsPerWeek(parseFloat(v))}
+              onValueChange={handleLbsPerWeekChange}
             >
               <SelectTrigger><SelectValue /></SelectTrigger>
               <SelectContent>
@@ -295,7 +314,7 @@ export function GoalsCalculator({ profile, latestWeightKg }: Props) {
             {DIET_TYPES.map(d => (
               <button
                 key={d.id}
-                onClick={() => setDietType(d.id)}
+                onClick={() => handleDietTypeChange(d.id)}
                 className={`rounded-lg border p-4 text-left transition-all ${
                   dietType === d.id
                     ? "border-primary bg-primary/10"
