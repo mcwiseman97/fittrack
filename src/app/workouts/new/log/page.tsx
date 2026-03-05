@@ -70,6 +70,15 @@ export default function AdhocWorkoutPage() {
                 if (raw) draft = JSON.parse(raw)
               } catch {}
 
+              const catByLoggedId: Record<number, string | undefined> = {}
+              try {
+                const raw = localStorage.getItem(`fittrack_exmeta_${session.id}`)
+                if (raw) {
+                  const arr = JSON.parse(raw) as Array<{ id: number; cat?: string }>
+                  arr.forEach((m) => { catByLoggedId[m.id] = m.cat })
+                }
+              } catch {}
+
               const activeExercises: ActiveExercise[] = (session.exercises ?? []).map(
                 (le: { id: number; exerciseId: number; exerciseName: string; sets: Array<{ id: number; setNumber: number; reps: number | null; weightKg: number | null; isWarmup: boolean; isDropSet: boolean }> }, idx: number) => {
                   const completedSets = le.sets.map((s) => ({
@@ -102,6 +111,7 @@ export default function AdhocWorkoutPage() {
                   return {
                     exerciseId: le.exerciseId,
                     exerciseName: le.exerciseName,
+                    exerciseCategory: catByLoggedId[le.id] ?? (le as any).exerciseCategory ?? undefined,
                     loggedExerciseId: le.id,
                     restSeconds: 90,
                     sets: allSets,

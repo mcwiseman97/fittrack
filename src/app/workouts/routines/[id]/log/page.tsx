@@ -78,6 +78,15 @@ export default function ActiveWorkoutPage({ params }: { params: { id: string } }
                 if (raw) draft = JSON.parse(raw)
               } catch {}
 
+              const catByLoggedId: Record<number, string | undefined> = {}
+              try {
+                const raw = localStorage.getItem(`fittrack_exmeta_${session.id}`)
+                if (raw) {
+                  const arr = JSON.parse(raw) as Array<{ id: number; cat?: string }>
+                  arr.forEach((m) => { catByLoggedId[m.id] = m.cat })
+                }
+              } catch {}
+
               // Reconstruct ActiveExercise[] from DB
               const activeExercises: ActiveExercise[] = (session.exercises ?? []).map(
                 (le: { id: number; exerciseId: number; exerciseName: string; sets: Array<{ id: number; setNumber: number; reps: number | null; weightKg: number | null; isWarmup: boolean; isDropSet: boolean }> }, idx: number) => {
@@ -120,7 +129,7 @@ export default function ActiveWorkoutPage({ params }: { params: { id: string } }
                   return {
                     exerciseId: le.exerciseId,
                     exerciseName: le.exerciseName,
-                    exerciseCategory: (le as any).exerciseCategory ?? undefined,
+                    exerciseCategory: catByLoggedId[le.id] ?? (le as any).exerciseCategory ?? undefined,
                     loggedExerciseId: le.id,
                     restSeconds: routineEx?.restSeconds ?? 90,
                     sets: allSets,

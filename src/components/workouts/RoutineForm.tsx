@@ -29,6 +29,7 @@ interface RoutineExerciseSlot {
   defaultSpeedMph: number | null
   defaultIncline: number | null
   defaultResistance: number | null
+  defaultSteps: number | null
 }
 
 interface Props {
@@ -74,6 +75,7 @@ export function RoutineForm({ routine }: Props) {
       defaultSpeedMph: e.defaultSpeedMph ?? null,
       defaultIncline: e.defaultIncline ?? null,
       defaultResistance: e.defaultResistance ?? null,
+      defaultSteps: (e as any).defaultSteps ?? null,
     })) ?? []
   )
   const [showSelector, setShowSelector] = useState(false)
@@ -97,6 +99,7 @@ export function RoutineForm({ routine }: Props) {
         defaultSpeedMph: null,
         defaultIncline: null,
         defaultResistance: null,
+        defaultSteps: null,
       },
     ])
   }
@@ -152,6 +155,7 @@ export function RoutineForm({ routine }: Props) {
           defaultSpeedMph: ex.defaultSpeedMph,
           defaultIncline: ex.defaultIncline,
           defaultResistance: ex.defaultResistance,
+          defaultSteps: ex.defaultSteps,
         }),
       })
     }
@@ -210,6 +214,9 @@ export function RoutineForm({ routine }: Props) {
           const nameLower = ex.exerciseName.toLowerCase()
           const isTreadmill = nameLower.includes("treadmill")
           const isBike = nameLower.includes("bike") || nameLower.includes("cycle") || nameLower.includes("stationary")
+          const isStairClimber = nameLower.includes("stair")
+          const isJumpRope = nameLower.includes("rope") || nameLower === "jump rope"
+          const isRepsCardio = nameLower.includes("burpee") || nameLower.includes("box jump")
 
           return (
             <div key={idx} className="bento-card space-y-3">
@@ -232,7 +239,7 @@ export function RoutineForm({ routine }: Props) {
               {isCardio ? (
                 /* ── Cardio exercise config ── */
                 <div className="space-y-2">
-                  {/* Row 1: Sets + Rest */}
+                  {/* Row 1: Sets + Rest (all cardio) */}
                   <div className="grid grid-cols-2 gap-2">
                     <div className="space-y-1">
                       <Label className="text-xs">Sets</Label>
@@ -258,94 +265,187 @@ export function RoutineForm({ routine }: Props) {
                     </div>
                   </div>
 
-                  {/* Row 2: Duration + Distance (all cardio) */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <div className="space-y-1">
-                      <Label className="text-xs">Duration (MM:SS)</Label>
-                      <Input
-                        type="text"
-                        placeholder="30:00"
-                        defaultValue={formatDuration(ex.defaultDurationSec)}
-                        onBlur={(e) => updateExercise(idx, "defaultDurationSec", parseDuration(e.target.value))}
-                        className="h-9 text-sm text-center"
-                      />
-                    </div>
-                    {!isTreadmill && (
-                      <div className="space-y-1">
-                        <Label className="text-xs">Distance (mi)</Label>
-                        <Input
-                          type="number"
-                          step="0.1"
-                          min="0"
-                          placeholder="—"
-                          value={ex.defaultDistanceM != null ? (ex.defaultDistanceM / 1609.344).toFixed(2) : ""}
-                          onChange={(e) => {
-                            const mi = parseFloat(e.target.value)
-                            updateExercise(idx, "defaultDistanceM", isNaN(mi) ? null : mi * 1609.344)
-                          }}
-                          className="h-9 text-sm text-center"
-                        />
-                      </div>
-                    )}
-                    {isTreadmill && (
-                      <div className="space-y-1">
-                        <Label className="text-xs">Speed (mph)</Label>
-                        <Input
-                          type="number"
-                          step="0.5"
-                          min="0"
-                          placeholder="—"
-                          value={ex.defaultSpeedMph ?? ""}
-                          onChange={(e) => {
-                            const v = parseFloat(e.target.value)
-                            updateExercise(idx, "defaultSpeedMph", isNaN(v) ? null : v)
-                          }}
-                          className="h-9 text-sm text-center"
-                        />
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Row 3: Treadmill-specific (incline) or Bike-specific (resistance) */}
-                  {isTreadmill && (
+                  {isStairClimber ? (
+                    /* Stair Climber: Duration + Steps */
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1">
-                        <Label className="text-xs">Incline (%)</Label>
+                        <Label className="text-xs">Duration (MM:SS)</Label>
+                        <Input
+                          type="text"
+                          placeholder="30:00"
+                          defaultValue={formatDuration(ex.defaultDurationSec)}
+                          onBlur={(e) => updateExercise(idx, "defaultDurationSec", parseDuration(e.target.value))}
+                          className="h-9 text-sm text-center"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Steps goal</Label>
                         <Input
                           type="number"
-                          step="0.5"
+                          step="100"
                           min="0"
                           placeholder="—"
-                          value={ex.defaultIncline ?? ""}
+                          value={ex.defaultSteps ?? ""}
                           onChange={(e) => {
                             const v = parseFloat(e.target.value)
-                            updateExercise(idx, "defaultIncline", isNaN(v) ? null : v)
+                            updateExercise(idx, "defaultSteps", isNaN(v) ? null : v)
                           }}
                           className="h-9 text-sm text-center"
                         />
                       </div>
-                      <div /> {/* spacer */}
                     </div>
-                  )}
-                  {isBike && (
+                  ) : isJumpRope ? (
+                    /* Jump Rope: Duration + Reps (jumps) */
                     <div className="grid grid-cols-2 gap-2">
                       <div className="space-y-1">
-                        <Label className="text-xs">Resistance</Label>
+                        <Label className="text-xs">Duration (MM:SS)</Label>
+                        <Input
+                          type="text"
+                          placeholder="10:00"
+                          defaultValue={formatDuration(ex.defaultDurationSec)}
+                          onBlur={(e) => updateExercise(idx, "defaultDurationSec", parseDuration(e.target.value))}
+                          className="h-9 text-sm text-center"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Reps (jumps)</Label>
+                        <Input
+                          type="number"
+                          step="10"
+                          min="0"
+                          placeholder="—"
+                          value={ex.defaultRepsMin || ""}
+                          onChange={(e) => {
+                            const v = parseInt(e.target.value) || 0
+                            updateExercise(idx, "defaultRepsMin", v)
+                            updateExercise(idx, "defaultRepsMax", v)
+                          }}
+                          className="h-9 text-sm text-center"
+                        />
+                      </div>
+                    </div>
+                  ) : isRepsCardio ? (
+                    /* Burpee / Box Jump: Reps + Duration */
+                    <div className="grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Reps</Label>
                         <Input
                           type="number"
                           step="1"
                           min="0"
                           placeholder="—"
-                          value={ex.defaultResistance ?? ""}
+                          value={ex.defaultRepsMin || ""}
                           onChange={(e) => {
-                            const v = parseFloat(e.target.value)
-                            updateExercise(idx, "defaultResistance", isNaN(v) ? null : v)
+                            const v = parseInt(e.target.value) || 0
+                            updateExercise(idx, "defaultRepsMin", v)
+                            updateExercise(idx, "defaultRepsMax", v)
                           }}
                           className="h-9 text-sm text-center"
                         />
                       </div>
-                      <div /> {/* spacer */}
+                      <div className="space-y-1">
+                        <Label className="text-xs">Duration (MM:SS)</Label>
+                        <Input
+                          type="text"
+                          placeholder="—"
+                          defaultValue={formatDuration(ex.defaultDurationSec)}
+                          onBlur={(e) => updateExercise(idx, "defaultDurationSec", parseDuration(e.target.value))}
+                          className="h-9 text-sm text-center"
+                        />
+                      </div>
                     </div>
+                  ) : (
+                    <>
+                      {/* Row 2: Duration + Distance or Speed */}
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <Label className="text-xs">Duration (MM:SS)</Label>
+                          <Input
+                            type="text"
+                            placeholder="30:00"
+                            defaultValue={formatDuration(ex.defaultDurationSec)}
+                            onBlur={(e) => updateExercise(idx, "defaultDurationSec", parseDuration(e.target.value))}
+                            className="h-9 text-sm text-center"
+                          />
+                        </div>
+                        {!isTreadmill && (
+                          <div className="space-y-1">
+                            <Label className="text-xs">Distance (mi)</Label>
+                            <Input
+                              type="number"
+                              step="0.1"
+                              min="0"
+                              placeholder="—"
+                              value={ex.defaultDistanceM != null ? (ex.defaultDistanceM / 1609.344).toFixed(2) : ""}
+                              onChange={(e) => {
+                                const mi = parseFloat(e.target.value)
+                                updateExercise(idx, "defaultDistanceM", isNaN(mi) ? null : mi * 1609.344)
+                              }}
+                              className="h-9 text-sm text-center"
+                            />
+                          </div>
+                        )}
+                        {isTreadmill && (
+                          <div className="space-y-1">
+                            <Label className="text-xs">Speed (mph)</Label>
+                            <Input
+                              type="number"
+                              step="0.5"
+                              min="0"
+                              placeholder="—"
+                              value={ex.defaultSpeedMph ?? ""}
+                              onChange={(e) => {
+                                const v = parseFloat(e.target.value)
+                                updateExercise(idx, "defaultSpeedMph", isNaN(v) ? null : v)
+                              }}
+                              className="h-9 text-sm text-center"
+                            />
+                          </div>
+                        )}
+                      </div>
+
+                      {/* Row 3: Treadmill-specific (incline) or Bike-specific (resistance) */}
+                      {isTreadmill && (
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <Label className="text-xs">Incline (%)</Label>
+                            <Input
+                              type="number"
+                              step="0.5"
+                              min="0"
+                              placeholder="—"
+                              value={ex.defaultIncline ?? ""}
+                              onChange={(e) => {
+                                const v = parseFloat(e.target.value)
+                                updateExercise(idx, "defaultIncline", isNaN(v) ? null : v)
+                              }}
+                              className="h-9 text-sm text-center"
+                            />
+                          </div>
+                          <div />
+                        </div>
+                      )}
+                      {isBike && (
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="space-y-1">
+                            <Label className="text-xs">Resistance</Label>
+                            <Input
+                              type="number"
+                              step="1"
+                              min="0"
+                              placeholder="—"
+                              value={ex.defaultResistance ?? ""}
+                              onChange={(e) => {
+                                const v = parseFloat(e.target.value)
+                                updateExercise(idx, "defaultResistance", isNaN(v) ? null : v)
+                              }}
+                              className="h-9 text-sm text-center"
+                            />
+                          </div>
+                          <div />
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               ) : (

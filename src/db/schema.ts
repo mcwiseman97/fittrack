@@ -110,6 +110,7 @@ export const routineExercises = sqliteTable(
     defaultSpeedMph: real("default_speed_mph"),
     defaultIncline: real("default_incline"),
     defaultResistance: real("default_resistance"),
+    defaultSteps: real("default_steps"),
   },
   (t) => ({
     routineIdx: index("routine_exercises_routine_idx").on(t.routineId),
@@ -182,6 +183,7 @@ export const sets = sqliteTable(
     rpe: real("rpe"),
     incline: real("incline"),
     resistance: real("resistance"),
+    steps: real("steps"),
     speedMph: real("speed_mph"),
     isWarmup: integer("is_warmup", { mode: "boolean" }).notNull().default(false),
     isDropSet: integer("is_drop_set", { mode: "boolean" })

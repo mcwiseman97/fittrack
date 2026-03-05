@@ -37,6 +37,9 @@ export function SetRow({ set, setIndex, onUpdate, onComplete, onRemove, previous
   const nameLower = exerciseName?.toLowerCase() ?? ""
   const isTreadmill = nameLower.includes("treadmill")
   const isBike = nameLower.includes("bike") || nameLower.includes("cycle") || nameLower.includes("stationary")
+  const isStairClimber = nameLower.includes("stair")
+  const isJumpRope = nameLower.includes("rope") || nameLower === "jump rope"
+  const isRepsCardio = nameLower.includes("burpee") || nameLower.includes("box jump")
 
   const [weightStr, setWeightStr] = useState(() => {
     if (set.weightKg == null) return ""
@@ -66,6 +69,11 @@ export function SetRow({ set, setIndex, onUpdate, onComplete, onRemove, previous
 
   const [speedMphStr, setSpeedMphStr] = useState(() => {
     const v = (set as any).speedMph ?? null
+    return v == null ? "" : String(v)
+  })
+
+  const [stepsStr, setStepsStr] = useState(() => {
+    const v = (set as any).steps ?? null
     return v == null ? "" : String(v)
   })
 
@@ -146,6 +154,15 @@ export function SetRow({ set, setIndex, onUpdate, onComplete, onRemove, previous
     }
   }
 
+  function handleStepsBlur() {
+    const parsed = parseFloat(stepsStr)
+    if (!isNaN(parsed) && parsed >= 0) {
+      onUpdate("steps" as keyof ActiveSet, parsed)
+    } else if (stepsStr === "") {
+      onUpdate("steps" as keyof ActiveSet, null)
+    }
+  }
+
   const distanceM = (set as any).distanceM as number | null
   const durationSec = (set as any).durationSec as number | null
   const paceMinsPerMile = distanceM && durationSec && distanceM > 0
@@ -167,6 +184,7 @@ export function SetRow({ set, setIndex, onUpdate, onComplete, onRemove, previous
 
   // Cardio exercises with extra fields get a second sub-row
   const hasSecondaryRow = isTreadmill || isBike
+  const noDistance = isStairClimber || isJumpRope || isRepsCardio || isTreadmill
 
   return (
     <div className={cn(
@@ -203,75 +221,150 @@ export function SetRow({ set, setIndex, onUpdate, onComplete, onRemove, previous
       <div className="flex-1 flex flex-col gap-1.5 min-w-0">
         {isCardio ? (
           <>
-            {/* Primary row: distance + duration */}
-            <div className="flex gap-2">
-              <Input
-                type="text"
-                inputMode="decimal"
-                value={distanceMiStr}
-                onChange={(e) => setDistanceMiStr(e.target.value)}
-                onBlur={handleDistanceBlur}
-                placeholder="mi"
-                className="h-10 text-center text-sm flex-1 min-w-0"
-                disabled={set.completed}
-              />
-              <Input
-                type="text"
-                value={durationStr}
-                onChange={(e) => setDurationStr(e.target.value)}
-                onBlur={handleDurationBlur}
-                placeholder="MM:SS"
-                className="h-10 text-center text-sm flex-1 min-w-0"
-                disabled={set.completed}
-              />
-            </div>
-
-            {/* Secondary row: speed + incline (treadmill) or resistance (bike) */}
-            {isTreadmill && (
+            {isStairClimber ? (
+              /* Stair Climber: duration + steps */
               <div className="flex gap-2">
                 <Input
                   type="text"
-                  inputMode="decimal"
-                  value={speedMphStr}
-                  onChange={(e) => setSpeedMphStr(e.target.value)}
-                  onBlur={handleSpeedBlur}
-                  placeholder="mph"
+                  value={durationStr}
+                  onChange={(e) => setDurationStr(e.target.value)}
+                  onBlur={handleDurationBlur}
+                  placeholder="MM:SS"
                   className="h-10 text-center text-sm flex-1 min-w-0"
                   disabled={set.completed}
                 />
                 <Input
                   type="text"
                   inputMode="decimal"
-                  value={inclineStr}
-                  onChange={(e) => setInclineStr(e.target.value)}
-                  onBlur={handleInclineBlur}
-                  placeholder="% inc"
+                  value={stepsStr}
+                  onChange={(e) => setStepsStr(e.target.value)}
+                  onBlur={handleStepsBlur}
+                  placeholder="steps"
                   className="h-10 text-center text-sm flex-1 min-w-0"
                   disabled={set.completed}
                 />
               </div>
-            )}
-            {isBike && (
+            ) : isJumpRope ? (
+              /* Jump Rope: duration + reps (jumps) */
               <div className="flex gap-2">
                 <Input
                   type="text"
-                  inputMode="decimal"
-                  value={resistanceStr}
-                  onChange={(e) => setResistanceStr(e.target.value)}
-                  onBlur={handleResistanceBlur}
-                  placeholder="resist."
+                  value={durationStr}
+                  onChange={(e) => setDurationStr(e.target.value)}
+                  onBlur={handleDurationBlur}
+                  placeholder="MM:SS"
                   className="h-10 text-center text-sm flex-1 min-w-0"
                   disabled={set.completed}
                 />
-                <div className="flex-1" /> {/* spacer so resist. field takes half width */}
+                <Input
+                  type="number"
+                  step="1"
+                  min="0"
+                  value={set.reps ?? ""}
+                  onChange={(e) => onUpdate("reps", e.target.value ? parseInt(e.target.value) : null)}
+                  placeholder="jumps"
+                  className="h-10 text-center text-sm flex-1 min-w-0"
+                  disabled={set.completed}
+                />
               </div>
-            )}
+            ) : isRepsCardio ? (
+              /* Burpee / Box Jump: reps + duration */
+              <div className="flex gap-2">
+                <Input
+                  type="number"
+                  step="1"
+                  min="0"
+                  value={set.reps ?? ""}
+                  onChange={(e) => onUpdate("reps", e.target.value ? parseInt(e.target.value) : null)}
+                  placeholder="reps"
+                  className="h-10 text-center text-sm flex-1 min-w-0"
+                  disabled={set.completed}
+                />
+                <Input
+                  type="text"
+                  value={durationStr}
+                  onChange={(e) => setDurationStr(e.target.value)}
+                  onBlur={handleDurationBlur}
+                  placeholder="MM:SS"
+                  className="h-10 text-center text-sm flex-1 min-w-0"
+                  disabled={set.completed}
+                />
+              </div>
+            ) : (
+              <>
+                {/* Default cardio primary row: distance + duration */}
+                <div className="flex gap-2">
+                  {!isTreadmill && (
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      value={distanceMiStr}
+                      onChange={(e) => setDistanceMiStr(e.target.value)}
+                      onBlur={handleDistanceBlur}
+                      placeholder="mi"
+                      className="h-10 text-center text-sm flex-1 min-w-0"
+                      disabled={set.completed}
+                    />
+                  )}
+                  <Input
+                    type="text"
+                    value={durationStr}
+                    onChange={(e) => setDurationStr(e.target.value)}
+                    onBlur={handleDurationBlur}
+                    placeholder="MM:SS"
+                    className={cn("h-10 text-center text-sm flex-1 min-w-0", isTreadmill && "flex-[2]")}
+                    disabled={set.completed}
+                  />
+                </div>
 
-            {/* Pace for non-treadmill, non-bike */}
-            {paceMinsPerMile && !isBike && !isTreadmill && (
-              <div className="text-xs text-muted-foreground text-center">
-                {paceMinsPerMile.toFixed(1)} <span className="text-[10px]">min/mi</span>
-              </div>
+                {/* Secondary row: speed + incline (treadmill) or resistance (bike) */}
+                {isTreadmill && (
+                  <div className="flex gap-2">
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      value={speedMphStr}
+                      onChange={(e) => setSpeedMphStr(e.target.value)}
+                      onBlur={handleSpeedBlur}
+                      placeholder="mph"
+                      className="h-10 text-center text-sm flex-1 min-w-0"
+                      disabled={set.completed}
+                    />
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      value={inclineStr}
+                      onChange={(e) => setInclineStr(e.target.value)}
+                      onBlur={handleInclineBlur}
+                      placeholder="% inc"
+                      className="h-10 text-center text-sm flex-1 min-w-0"
+                      disabled={set.completed}
+                    />
+                  </div>
+                )}
+                {isBike && (
+                  <div className="flex gap-2">
+                    <Input
+                      type="text"
+                      inputMode="decimal"
+                      value={resistanceStr}
+                      onChange={(e) => setResistanceStr(e.target.value)}
+                      onBlur={handleResistanceBlur}
+                      placeholder="resist."
+                      className="h-10 text-center text-sm flex-1 min-w-0"
+                      disabled={set.completed}
+                    />
+                    <div className="flex-1" />
+                  </div>
+                )}
+
+                {/* Pace for non-treadmill, non-bike */}
+                {paceMinsPerMile && !isBike && !isTreadmill && (
+                  <div className="text-xs text-muted-foreground text-center">
+                    {paceMinsPerMile.toFixed(1)} <span className="text-[10px]">min/mi</span>
+                  </div>
+                )}
+              </>
             )}
           </>
         ) : (
@@ -346,7 +439,11 @@ export function SetRow({ set, setIndex, onUpdate, onComplete, onRemove, previous
             className="w-9 h-10 rounded-lg hover:bg-neon-green/20 hover:text-neon-green transition-colors"
             onClick={onComplete}
             disabled={isCardio
-              ? ((set as any).distanceM == null && (set as any).durationSec == null)
+              ? isStairClimber
+                ? ((set as any).steps == null && (set as any).durationSec == null)
+                : (isJumpRope || isRepsCardio)
+                  ? (set.reps == null && (set as any).durationSec == null)
+                  : ((set as any).distanceM == null && (set as any).durationSec == null)
               : (set.reps === null && set.weightKg === null)}
           >
             <Check className="w-4 h-4" />

@@ -50,6 +50,7 @@ export interface ActiveSet {
   incline?: number | null;
   resistance?: number | null;
   speedMph?: number | null;
+  steps?: number | null;
   isWarmup: boolean;
   isDropSet: boolean;
   isPersonalBest?: boolean;
@@ -133,6 +134,7 @@ export interface RoutineWithExercises {
     defaultSpeedMph?: number | null;
     defaultIncline?: number | null;
     defaultResistance?: number | null;
+    defaultSteps?: number | null;
   }>;
 }
 

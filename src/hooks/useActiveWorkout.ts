@@ -150,6 +150,10 @@ export function useActiveWorkout() {
     )
     try {
       localStorage.setItem(`fittrack_draft_${state.sessionId}`, JSON.stringify(draft))
+      const exMeta = state.exercises
+        .filter((ex) => ex.loggedExerciseId != null)
+        .map((ex) => ({ id: ex.loggedExerciseId!, cat: ex.exerciseCategory }))
+      localStorage.setItem(`fittrack_exmeta_${state.sessionId}`, JSON.stringify(exMeta))
     } catch {}
   }, [state.exercises, state.sessionId, state.isFinished])
 
@@ -190,6 +194,12 @@ export function useActiveWorkout() {
             setNumber: set.setNumber,
             reps: set.reps,
             weightKg: set.weightKg,
+            durationSec: set.durationSec ?? null,
+            distanceM: set.distanceM ?? null,
+            speedMph: set.speedMph ?? null,
+            incline: set.incline ?? null,
+            resistance: set.resistance ?? null,
+            steps: set.steps ?? null,
             isWarmup: set.isWarmup,
             isDropSet: set.isDropSet,
             completedAt: new Date().toISOString(),
@@ -217,7 +227,7 @@ export function useActiveWorkout() {
     for (const ex of state.exercises) {
       if (!ex.loggedExerciseId) continue
       for (const set of ex.sets) {
-        if (!set.completed && (set.weightKg !== null || set.reps !== null)) {
+        if (!set.completed && (set.weightKg !== null || set.reps !== null || set.durationSec != null || set.distanceM != null || set.steps != null)) {
           await fetch(
             `/api/workouts/${state.sessionId}/exercises/${ex.loggedExerciseId}/sets`,
             {
@@ -227,6 +237,12 @@ export function useActiveWorkout() {
                 setNumber: set.setNumber,
                 reps: set.reps,
                 weightKg: set.weightKg,
+                durationSec: set.durationSec ?? null,
+                distanceM: set.distanceM ?? null,
+                speedMph: set.speedMph ?? null,
+                incline: set.incline ?? null,
+                resistance: set.resistance ?? null,
+                steps: set.steps ?? null,
                 isWarmup: set.isWarmup,
                 isDropSet: set.isDropSet,
                 completedAt: new Date().toISOString(),
@@ -252,6 +268,7 @@ export function useActiveWorkout() {
     const rid = state.routineId
     try {
       localStorage.removeItem(`fittrack_draft_${sid}`)
+      localStorage.removeItem(`fittrack_exmeta_${sid}`)
       if (rid != null) localStorage.removeItem(`fittrack_active_${rid}`)
       else localStorage.removeItem("fittrack_active_adhoc")
     } catch {}

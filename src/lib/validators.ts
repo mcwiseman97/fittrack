@@ -54,6 +54,7 @@ export const AddRoutineExerciseSchema = z.object({
   defaultSpeedMph: z.number().min(0).max(100).optional().nullable(),
   defaultIncline: z.number().min(0).max(100).optional().nullable(),
   defaultResistance: z.number().min(0).max(100).optional().nullable(),
+  defaultSteps: z.number().min(0).optional().nullable(),
 });
 
 // ─── Workout Sessions ──────────────────────
@@ -89,6 +90,7 @@ export const CreateSetSchema = z.object({
   incline: z.number().min(0).max(100).optional().nullable(),
   resistance: z.number().min(0).max(100).optional().nullable(),
   speedMph: z.number().min(0).max(100).optional().nullable(),
+  steps: z.number().min(0).optional().nullable(),
   isWarmup: z.boolean().optional(),
   isDropSet: z.boolean().optional(),
   completedAt: z.string().datetime().optional(),

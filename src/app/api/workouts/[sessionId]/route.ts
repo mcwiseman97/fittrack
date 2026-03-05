@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { db } from "@/db"
-import { workoutSessions, loggedExercises, sets } from "@/db/schema"
-import { eq, and, asc } from "drizzle-orm"
+import { workoutSessions, loggedExercises, exercises, sets } from "@/db/schema"
+import { eq, and, asc, inArray } from "drizzle-orm"
 import { UpdateSessionSchema } from "@/lib/validators"
 import { getActiveProfileId } from "@/lib/profile"
 import { awardXp, checkAndAwardAchievements, getWeekStr, updateChallengeProgress, earnStreakFreezeIfEligible } from "@/lib/gamification"
@@ -18,6 +18,17 @@ export async function GET(req: NextRequest, { params }: { params: { sessionId: s
     .where(eq(loggedExercises.sessionId, id))
     .orderBy(asc(loggedExercises.sortOrder))
 
+  // Build exerciseCategory map
+  const exerciseIds = exs.map((e) => e.exerciseId)
+  const catMap: Record<number, string> = {}
+  if (exerciseIds.length > 0) {
+    const cats = await db
+      .select({ id: exercises.id, category: exercises.category })
+      .from(exercises)
+      .where(inArray(exercises.id, exerciseIds))
+    for (const c of cats) catMap[c.id] = c.category
+  }
+
   const exercisesWithSets = await Promise.all(
     exs.map(async (ex) => {
       const exSets = await db
@@ -25,7 +36,7 @@ export async function GET(req: NextRequest, { params }: { params: { sessionId: s
         .from(sets)
         .where(eq(sets.loggedExerciseId, ex.id))
         .orderBy(asc(sets.setNumber))
-      return { ...ex, sets: exSets }
+      return { ...ex, sets: exSets, exerciseCategory: catMap[ex.exerciseId] ?? null }
     })
   )
 

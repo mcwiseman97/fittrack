@@ -81,6 +81,9 @@ export function ActiveWorkoutPanel({ workout }: Props) {
         const nameLower = ex.exerciseName?.toLowerCase() ?? ""
         const isTreadmill = nameLower.includes("treadmill")
         const isBike = nameLower.includes("bike") || nameLower.includes("cycle") || nameLower.includes("stationary")
+        const isStairClimber = nameLower.includes("stair")
+        const isJumpRope = nameLower.includes("rope") || nameLower === "jump rope"
+        const isRepsCardio = nameLower.includes("burpee") || nameLower.includes("box jump")
 
         return (
           <div
@@ -138,8 +141,34 @@ export function ActiveWorkoutPanel({ workout }: Props) {
                   <div className="flex items-center gap-2 px-2 text-xs text-muted-foreground">
                     <span className="w-7" />
                     <span className="w-14 text-center hidden sm:block">Prev</span>
-                    <span className="flex-1 text-center">{isCardio ? "mi" : "lbs"}</span>
-                    <span className="flex-1 text-center">{isCardio ? "MM:SS" : "reps"}</span>
+                    {isCardio && isStairClimber ? (
+                      <>
+                        <span className="flex-1 text-center">MM:SS</span>
+                        <span className="flex-1 text-center">steps</span>
+                      </>
+                    ) : isCardio && isJumpRope ? (
+                      <>
+                        <span className="flex-1 text-center">MM:SS</span>
+                        <span className="flex-1 text-center">jumps</span>
+                      </>
+                    ) : isCardio && isRepsCardio ? (
+                      <>
+                        <span className="flex-1 text-center">reps</span>
+                        <span className="flex-1 text-center">MM:SS</span>
+                      </>
+                    ) : isCardio && isTreadmill ? (
+                      <span className="flex-[2] text-center">MM:SS</span>
+                    ) : isCardio ? (
+                      <>
+                        <span className="flex-1 text-center">mi</span>
+                        <span className="flex-1 text-center">MM:SS</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="flex-1 text-center">lbs</span>
+                        <span className="flex-1 text-center">reps</span>
+                      </>
+                    )}
                     <span className="w-9" />
                     <span className="w-7" />
                   </div>
